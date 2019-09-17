@@ -1,5 +1,6 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 public class MapTile
@@ -36,12 +37,13 @@ public class LevelGenerator : MonoBehaviour
 
     private void Start()
     {
-        GenerateDungeon();    
+        GenerateDungeon();
     }
 
     public void GenerateDungeon()
     {
         SpawnStartingRoom();
+        AddConnectionPoints();
         StartCoroutine(Example());
     }
 
@@ -50,12 +52,14 @@ public class LevelGenerator : MonoBehaviour
     {
         for (int i = 0; i < maximumRoomCount; i++)
         {
-
             SpawnPrefab(rooms);
-
+            AddConnectionPoints();
             yield return new WaitForSeconds(spawnDelay);
-            if (!HallwaySafetyNet())
+            if (i % 3 == 0)
+            {
                 SpawnPrefab(corridors);
+                AddConnectionPoints();
+            }
         }
         CapRoomEnds(endCaps);
         yield return new WaitForSeconds(.5f);
@@ -70,12 +74,12 @@ public class LevelGenerator : MonoBehaviour
     /// <param name="go">Gameobject that wants to be placed</param>
     /// <returns></returns>
     private bool CheckOverlap(Vector3 pos, GameObject go)
-     {
+    {
         Vector2 size = go.GetComponent<BoxCollider2D>().size;
         Collider2D[] hits = Physics2D.OverlapBoxAll(pos, size, 0);
         foreach (var hit in hits)
         {
-            if(hit.gameObject.layer == 8)
+            if (hit.gameObject.layer == 8)
             {
                 return true;
             }
@@ -105,7 +109,7 @@ public class LevelGenerator : MonoBehaviour
     private void SpawnStartingRoom()
     {
         Vector3 randomPos = RandomMapPos();
-        GameObject roomPrefab = GameObject.Instantiate(rooms[Random.Range(0,rooms.Length)], randomPos, Quaternion.identity);
+        GameObject roomPrefab = GameObject.Instantiate(rooms[Random.Range(0, rooms.Length)], randomPos, Quaternion.identity);
         AddConnectionPoints();
     }
 
@@ -114,7 +118,7 @@ public class LevelGenerator : MonoBehaviour
         GameObject[] hallways = GameObject.FindGameObjectsWithTag("Hall");
         GameObject[] rooms = GameObject.FindGameObjectsWithTag("Room");
 
-        if(hallways.Length >= rooms.Length)
+        if (hallways.Length >= rooms.Length)
             return true;
         return false;
     }
@@ -184,7 +188,7 @@ public class LevelGenerator : MonoBehaviour
     /// <param name="prefabList"></param>
     private void SpawnPrefab(GameObject[] prefabList)
     {
-        Vector3 spawnVector = connectionKeys[Random.Range(0, connectionKeys.Count)];
+        Vector3 spawnVector = connectionKeys[Random.Range(0, connectionKeys.Count - 1)];
         GameObject roomToConnectTo = connectionPoints[spawnVector];
         RoomStats roomToConStats = roomToConnectTo.GetComponent<RoomStats>();
         GameObject roomPrefab = GameObject.Instantiate(prefabList[Random.Range(0, prefabList.Length)], new Vector3(-100, -100, 0), Quaternion.identity);
@@ -199,7 +203,7 @@ public class LevelGenerator : MonoBehaviour
         {
             if (!roomToConStats.isConnNorth && spawnVector == roomToConNORTH)
             {
-                roomToConNORTH = new Vector3(roomToConnectTo.transform.position.x, roomToConnectTo.transform.position.y + (roomToConStats.connectionOffset +prefabStats.connectionOffset), 0);
+                roomToConNORTH = new Vector3(roomToConnectTo.transform.position.x, roomToConnectTo.transform.position.y + (roomToConStats.connectionOffset + prefabStats.connectionOffset), 0);
                 PlaceRoom(roomPrefab, roomToConNORTH, 90f);
                 FlagRoomConnections(prefabStats, 0, roomToConStats);
                 return;
@@ -208,7 +212,7 @@ public class LevelGenerator : MonoBehaviour
 
             if (!roomToConStats.isConnEast && spawnVector == roomToConEAST)
             {
-                roomToConEAST = new Vector3(roomToConnectTo.transform.position.x + (roomToConStats.connectionOffset +prefabStats.connectionOffset), roomToConnectTo.transform.position.y, 0);
+                roomToConEAST = new Vector3(roomToConnectTo.transform.position.x + (roomToConStats.connectionOffset + prefabStats.connectionOffset), roomToConnectTo.transform.position.y, 0);
                 PlaceRoom(roomPrefab, roomToConEAST, 0f);
                 FlagRoomConnections(prefabStats, 1, roomToConStats);
                 return;
@@ -216,7 +220,7 @@ public class LevelGenerator : MonoBehaviour
 
             if (!roomToConStats.isConnSouth && spawnVector == roomToConSOUTH)
             {
-                
+
                 roomToConSOUTH = new Vector3(roomToConnectTo.transform.position.x, roomToConnectTo.transform.position.y + -(roomToConStats.connectionOffset + prefabStats.connectionOffset), 0);
                 PlaceRoom(roomPrefab, roomToConSOUTH, 90f);
                 FlagRoomConnections(prefabStats, 2, roomToConStats);
@@ -225,13 +229,13 @@ public class LevelGenerator : MonoBehaviour
 
             if (!roomToConStats.isConnWest && spawnVector == roomToConWEST)
             {
-                roomToConWEST = new Vector3(roomToConnectTo.transform.position.x + -(roomToConStats.connectionOffset +prefabStats.connectionOffset), roomToConnectTo.transform.position.y, 0);
+                roomToConWEST = new Vector3(roomToConnectTo.transform.position.x + -(roomToConStats.connectionOffset + prefabStats.connectionOffset), roomToConnectTo.transform.position.y, 0);
                 PlaceRoom(roomPrefab, roomToConWEST, 0f);
                 FlagRoomConnections(prefabStats, 3, roomToConStats);
                 return;
             }
 
-        } 
+        }
         //Add new connection points
         AddConnectionPoints();
     }
@@ -251,7 +255,7 @@ public class LevelGenerator : MonoBehaviour
             spawnVector = connectionKeys[i];
             roomToConnectTo = connectionPoints[spawnVector];
             RoomStats roomToConStats = roomToConnectTo.GetComponent<RoomStats>();
-            
+
             Vector3 roomToConNORTH = new Vector3(roomToConnectTo.transform.position.x, roomToConnectTo.transform.position.y + (roomToConStats.connectionOffset + 2), roomToConnectTo.transform.position.z);
             Vector3 roomToConEAST = new Vector3(roomToConnectTo.transform.position.x + (roomToConStats.connectionOffset * 2), roomToConnectTo.transform.position.y, roomToConnectTo.transform.position.z);
             Vector3 roomToConSOUTH = new Vector3(roomToConnectTo.transform.position.x, roomToConnectTo.transform.position.y + (-roomToConStats.connectionOffset * 2), roomToConnectTo.transform.position.z);
@@ -302,7 +306,7 @@ public class LevelGenerator : MonoBehaviour
                 }
             }
         }
-       
+
     }
 
     //This places and rotates objects
@@ -330,7 +334,7 @@ public class LevelGenerator : MonoBehaviour
             if (!CheckOverlap(north, wallPrefabObj))
             {
                 PlaceRoom(wallPrefabObj, north, 0f);
-            }         
+            }
 
             if (!CheckOverlap(east, wallPrefabObj))
             {
@@ -354,18 +358,20 @@ public class LevelGenerator : MonoBehaviour
 
         }
     }
-    
+
     //Adds connection points to our connection array and dictionary
     private void AddConnectionPoints()
     {
 
-        GameObject[] gameObjs = GameObject.FindGameObjectsWithTag("Room");
+        GameObject[] roomObjs = GameObject.FindGameObjectsWithTag("Room");
+        GameObject[] hallObjs = GameObject.FindGameObjectsWithTag("Hall");
+        var allObjects = roomObjs.Union(hallObjs).ToArray();
         Dictionary<Vector3, GameObject> newPoints = new Dictionary<Vector3, GameObject>();
         List<Vector3> newKeys = new List<Vector3>();
-        
-        foreach (var room in gameObjs)
+
+        foreach (var room in allObjects)
         {
-            if(room.transform.position == new Vector3(-100, -100, 0))
+            if (room.transform.position == new Vector3(-100, -100, 0))
             {
                 Destroy(room);
                 continue;
@@ -374,9 +380,9 @@ public class LevelGenerator : MonoBehaviour
 
             if (roomInfo.isConnNorth == false)
             {
-                Vector3 cp = new Vector3(room.transform.position.x, room.transform.position.y + (roomInfo.connectionOffset *2), room.transform.position.z);
+                Vector3 cp = new Vector3(room.transform.position.x, room.transform.position.y + (roomInfo.connectionOffset * 2), room.transform.position.z);
 
-                if(!newPoints.ContainsKey(cp))
+                if (!newPoints.ContainsKey(cp))
                 {
                     newKeys.Add(cp);
                     newPoints.Add(cp, room);
@@ -385,13 +391,13 @@ public class LevelGenerator : MonoBehaviour
             }
             if (roomInfo.isConnEast == false)
             {
-                Vector3 cp = new Vector3(room.transform.position.x + (roomInfo.connectionOffset *2), room.transform.position.y, room.transform.position.z);
+                Vector3 cp = new Vector3(room.transform.position.x + (roomInfo.connectionOffset * 2), room.transform.position.y, room.transform.position.z);
                 if (!newPoints.ContainsKey(cp))
                 {
                     newPoints.Add(cp, room);
                     newKeys.Add(cp);
                 }
-               
+
             }
             if (roomInfo.isConnSouth == false)
             {
@@ -429,6 +435,3 @@ public class LevelGenerator : MonoBehaviour
         return newPos;
     }
 }
-
-
-
